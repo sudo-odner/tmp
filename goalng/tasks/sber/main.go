@@ -73,9 +73,6 @@ func NewObject(nameObject string) Sayer {
 	}
 }
 
-func Workers(ch chan Sayer, f func()) {
-
-}
 func Generator() <-chan Sayer {
 	ch := make(chan Sayer)
 	ctx, chanel := context.WithTimeout(context.Background(), 11*time.Second)
