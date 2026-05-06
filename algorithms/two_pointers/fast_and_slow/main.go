@@ -2,7 +2,10 @@ package main
 
 import "fmt"
 
-// This file is for solving task on the topic of two pointer by method "from both side"
+// This file is for solving task on the topic of two pointer by method "fast and slow"
+// Green flags "fast and slow"
+// - нужна in-place можификация для строки или массива
+// - требуется сохранить исходный порядок
 
 // Данн массив чисел, нужно без создания нового массива переместить все 0 в конец текущего
 //
