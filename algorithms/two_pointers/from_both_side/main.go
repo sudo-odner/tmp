@@ -40,9 +40,39 @@ func two_sum(nums []int, target int) []int {
 	return []int{-1, -1}
 }
 
+// func main() {
+// 	nums := []int{-2, 1, 6, 9, 12, 21}
+// 	target := 18
+// 	answer := two_sum(nums, target)
+// 	fmt.Println(answer)
+// }
+
+// Дано слово s. Нужно проверить, является ли оно палиндромом. Палиндром - слово,
+// которе читается слева на право и справва на левао одинаково. Например, "шалаш" -
+// полиндром, а "кот" - нет
+//
+// Ввод:
+// s = "шалаш"
+// Вывод:
+// true
+
+func palindrom(s string) bool {
+	sRune := []rune(s)
+	l := 0
+	r := len(sRune) - 1
+
+	for l < r {
+		if sRune[l] != sRune[r] {
+			return false
+		}
+		l++
+		r--
+	}
+	return true
+}
+
 func main() {
-	nums := []int{-2, 1, 6, 9, 12, 21}
-	target := 18
-	answer := two_sum(nums, target)
-	fmt.Println(answer)
+	shalash := "шалаш"
+	cat := "кот"
+	fmt.Println(palindrom(shalash), palindrom(cat))
 }
