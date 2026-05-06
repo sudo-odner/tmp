@@ -57,25 +57,15 @@ func moveZeros(nums []int) []int {
 func setOneSpace(chars []rune) []rune {
 	slow := 0
 	fast := 0
-	counter := 0
 
 	for fast < len(chars) {
-		if chars[fast] == ' ' {
-			if counter < 1 {
-				slow++
-				fast++
-				counter++
-			} else {
-				fast++
-			}
-		} else {
-			chars[slow], chars[fast] = chars[fast], chars[slow]
+		if fast == 0 || chars[fast] != ' ' || chars[fast-1] != ' ' {
+			chars[slow] = chars[fast]
 			slow++
-			fast++
-			counter = 0
 		}
+		fast++
 	}
-	return chars
+	return chars[:slow]
 }
 
 func main() {
