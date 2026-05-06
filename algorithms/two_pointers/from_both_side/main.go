@@ -26,10 +26,13 @@ import "fmt"
 // Память: O(1)
 
 func two_sum(nums []int, target int) []int {
+	// 1. Иницилизация указателей
 	l := 0
 	r := len(nums) - 1
 
+	// 2. Цикл
 	for l < r {
+		// 3. Логика движения указателя
 		currSum := nums[l] + nums[r]
 		if currSum == target {
 			return []int{l, r}
