@@ -45,7 +45,40 @@ func moveZeros(nums []int) []int {
 	return nums
 }
 
+// func main() {
+// 	nums := []int{0, 1, 0, 0, 3, 12, 2}
+// 	fmt.Println(moveZeros(nums))
+// }
+
+// Дан массив символов chars. Нужно заменить все подряд ижущие пробелы (в том числе в
+// начале и концe) на один пробел. Все изменения должны мыть внесены в исходный массив
+// (in-place), без создания нового.
+// (Тоже самое как и с предыдущим, можно не возврощять)
+func setOneSpace(chars []rune) []rune {
+	slow := 0
+	fast := 0
+	counter := 0
+
+	for fast < len(chars) {
+		if chars[fast] == ' ' {
+			if counter < 1 {
+				slow++
+				fast++
+				counter++
+			} else {
+				fast++
+			}
+		} else {
+			chars[slow], chars[fast] = chars[fast], chars[slow]
+			slow++
+			fast++
+			counter = 0
+		}
+	}
+	return chars
+}
+
 func main() {
-	nums := []int{0, 1, 0, 0, 3, 12, 2}
-	fmt.Println(moveZeros(nums))
+	chars := []rune{' ', ' ', 'h', 'i', ' ', ' ', ' ', '!', ' '}
+	fmt.Printf("%q\n", setOneSpace(chars))
 }
