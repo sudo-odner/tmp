@@ -3,6 +3,10 @@ package main
 import "fmt"
 
 // This file is for solving task on the topic of two pointer by method "from both side"
+// Green flags "from both side"
+// - по условию дан один отсторированниый массив
+// - задача на проверку полиндрома (возможны усложнения)
+// - ответ формируется за счет сужения области с двух сторон
 
 // Дан отсторированниый массив и число turget, нужно вернуть позиции 2 чисел,
 // которые даеют в сумме target.
