@@ -141,33 +141,28 @@ func inOneSortedArray(nums1, nums2 []int) []int {
 // -109 <= nums1[i], nums2[j] <= 109
 
 func merge(nums1 []int, m int, nums2 []int, n int) {
-	p1 := 0
-	p2 := 0
+	p1 := m - 1
+	p2 := n - 1
 
-	for len(nums1) > m+n && len(nums2) > n {
-		fmt.Println(nums1, nums2, m, n, p1, p2)
-		if nums1[p1] == 0 {
-			nums1[p1], nums2[p2] = nums1[p2], nums2[p1]
-			p1++
-			p2++
-		} else if nums1[p1] > nums2[p2] {
-			nums1[p1], nums2[p2] = nums1[p2], nums2[p1]
-			p2++
-		} else if nums1[p1] == nums2[p2] {
-			p1++
-		} else if nums1[p1] < nums2[p2] {
+	for mp := m + n - 1; mp >= 0 && p2 >= 0; mp-- {
+		fmt.Println(nums1, nums2, m, n, m+n, p1, p2, mp)
+		if p1 < 0 || nums2[p2] > nums1[p1] {
+			nums1[mp], nums2[p2] = nums2[p2], nums1[mp]
 			p2--
+		} else {
+			nums1[mp], nums1[p1] = nums1[p1], nums1[mp]
+			p1--
 		}
 	}
 }
 
 func main() {
-	// nums1 := []int{1, 2, 3, 0, 0, 0}
-	// nums2 := []int{2, 5, 6}
+	nums1 := []int{1, 2, 3, 0, 0, 0}
+	nums2 := []int{2, 5, 6}
 	// nums1 := []int{4, 5, 6, 0, 0, 0}
 	// nums2 := []int{1, 2, 3}
-	nums1 := []int{4, 0, 0, 0, 0, 0}
-	nums2 := []int{1, 2, 3, 5, 6}
+	// nums1 := []int{4, 0, 0, 0, 0, 0}
+	// nums2 := []int{1, 2, 3, 5, 6}
 	fmt.Println(nums1)
 	merge(nums1, len(nums1)-len(nums2), nums2, len(nums2))
 	fmt.Println(nums1)
