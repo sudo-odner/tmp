@@ -12,7 +12,7 @@ func TestSolution(t *testing.T) {
 		output [][]int
 	}{
 		{
-			name:   "3 Task",
+			name:   "1 Task",
 			nums:   []int{-1, 0, 1, 2, -1, -4},
 			output: [][]int{{-1, -1, 2}, {-1, 0, 1}},
 		},

@@ -1,5 +1,9 @@
 package main
 
+import (
+	"sort"
+)
+
 // Given an integer array nums, return all the triplets [nums[i], nums[j], nums[k]] such that i != j, i != k, and j != k, and nums[i] + nums[j] + nums[k] == 0.
 // Notice that the solution set must not contain duplicate triplets.
 //
@@ -33,41 +37,35 @@ package main
 //     -105 <= nums[i] <= 105
 
 func threeSum(nums []int) [][]int {
-	// sorting nums array
-	for range len(nums) {
-		for i := len(nums) - 1; i > 0; i-- {
-			if nums[i] < nums[i-1] {
-				nums[i], nums[i-1] = nums[i-1], nums[i]
-			}
-		}
-	}
-
 	var answer [][]int
-	seen := make(map[[3]int]bool)
 
-	for m := range len(nums) {
-		l := 0
-		r := len(nums) - 1
-		for l < r {
-			if l == m {
-				l++
-			} else if r == m {
+	// sort nums array
+	sort.Ints(nums)
+	n := len(nums)
+
+	for l := range n - 2 {
+		if nums[l] > 0 {
+			break
+		}
+		if l > 0 && nums[l] == nums[l-1] {
+			continue
+		}
+
+		m, r := l+1, n-1
+		for m < r {
+			sum := nums[l] + nums[m] + nums[r]
+			if sum == 0 {
+				answer = append(answer, []int{nums[l], nums[m], nums[r]})
+				for m < r && nums[m] == nums[m+1] {
+					m++
+				}
+				for m < r && nums[r] == nums[r-1] {
+					r--
+				}
+				m++
 				r--
-			} else if nums[l]+nums[r] == 0-nums[m] {
-				add := [3]int{nums[l], nums[m], nums[r]}
-				if m < l {
-					add[0], add[1] = add[1], add[0]
-				}
-				if m > r {
-					add[1], add[2] = add[2], add[1]
-				}
-				if !seen[add] {
-					answer = append(answer, add[:])
-					seen[add] = true
-				}
-				r--
-			} else if nums[l]+nums[r] < 0-nums[m] {
-				l++
+			} else if sum < 0 {
+				m++
 			} else {
 				r--
 			}
