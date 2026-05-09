@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"sort"
 )
 
@@ -28,6 +27,7 @@ import (
 //	3 <= nums.length <= 500
 //	-1000 <= nums[i] <= 1000
 //	-104 <= target <= 104
+
 func abs(i int) uint {
 	if i < 0 {
 		return uint(-1 * i)
@@ -46,7 +46,6 @@ func threeSumClosest(nums []int, target int) int {
 		for m < r {
 			sum := nums[l] + nums[m] + nums[r]
 			diff := sum - target
-			fmt.Printf("%v %v %v   %v: best diff %v\n", nums[l], nums[m], nums[r], sum, diff)
 			if diff == 0 {
 				return target
 			} else if diff < 0 {
