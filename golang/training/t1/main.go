@@ -20,10 +20,13 @@ func ProcessTasks(ctx context.Context, tasks []func() error, poolSize int) []err
 				wg.Add(1)
 				go func() {
 					defer wg.Done()
+					defer func() { _ = <-ch }()
 					outErr[i] = t()
-					_ = <-ch
 				}()
 			case <-ctx.Done():
+				for j := i; j < len(tasks); j++ {
+					outErr[j] = ctx.Err()
+				}
 				return
 			}
 		}
