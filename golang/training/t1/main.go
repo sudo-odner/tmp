@@ -9,6 +9,7 @@ import (
 
 func ProcessTasks(ctx context.Context, tasks []func() error, poolSize int) []error {
 	var wg sync.WaitGroup
+	// Test
 
 	ch := make(chan struct{}, poolSize) // Канал колличеста активных вокреров
 	outErr := make([]error, len(tasks)) // Канал/список ответов задач
