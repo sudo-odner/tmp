@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"sync"
 	"time"
 )
 
@@ -17,52 +18,90 @@ import (
 type WorkerPool struct {
 	workCount int
 	workChan  chan func()
+
+	closeCh     chan struct{}
+	closeDoneCh chan struct{}
 }
 
 func NewWorkerPool(workerCount int) (*WorkerPool, error) {
 	if workerCount <= 0 {
 		return nil, fmt.Errorf("worker count muts be upper zero")
 	}
+
+	var wg sync.WaitGroup
+
 	workChan := make(chan func())
 
+	closeCh := make(chan struct{})
+	closeDoneCh := make(chan struct{})
+
+	wg.Add(workerCount)
 	for range workerCount {
 		go func() {
-			for task := range workChan {
-				task()
+			defer wg.Done()
+			for {
+				select {
+				case <-closeCh:
+					return
+				case task := <-workChan:
+					task()
+				}
 			}
 		}()
 	}
 
+	go func() {
+		wg.Wait()
+		close(closeDoneCh)
+	}()
+
 	return &WorkerPool{
 		workCount: workerCount,
 		workChan:  workChan,
+
+		closeCh:     closeCh,
+		closeDoneCh: closeDoneCh,
 	}, nil
 }
 
 func (wp *WorkerPool) AddTask(task func()) error {
-	t := time.NewTicker(500 * time.Microsecond)
+	t := time.NewTicker(500 * time.Millisecond)
 	defer t.Stop()
+
 	select {
 	case wp.workChan <- task:
 		return nil
+	case <-wp.closeCh:
+		return fmt.Errorf("worker poll is shutdown, task not started")
 	case <-t.C:
 		return fmt.Errorf("timeout start task 500ms")
 	}
 }
 
+func (wp *WorkerPool) Shutdown() {
+	close(wp.closeCh)
+	<-wp.closeDoneCh
+}
+
 func main() {
+	// Создаю worker pool
 	wPool, err := NewWorkerPool(3)
 	if err != nil {
 		panic(err)
 	}
-	for i := range 100 {
-		if err := wPool.AddTask(func() {
-			time.Sleep(1 * time.Second)
-			fmt.Printf("Task number %d done\n", i)
-		}); err != nil {
-			fmt.Println("Falied add task", err.Error())
+
+	// Иметриую работу и добавляю задачи в worker pool
+	go func() {
+		for i := range 100 {
+			if err := wPool.AddTask(func() {
+				time.Sleep(1 * time.Second)
+				fmt.Printf("Task number %d done\n", i)
+			}); err != nil {
+				fmt.Println("Falied add task:", err.Error())
+			}
 		}
-	}
+	}()
 
 	time.Sleep(5 * time.Second)
+	wPool.Shutdown()
 }
