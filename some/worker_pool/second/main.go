@@ -43,6 +43,12 @@ func NewWorkerPool(workerCount int) (*WorkerPool, error) {
 				select {
 				case <-closeCh:
 					return
+				default:
+				}
+
+				select {
+				case <-closeCh:
+					return
 				case task := <-workChan:
 					task()
 				}
@@ -52,6 +58,7 @@ func NewWorkerPool(workerCount int) (*WorkerPool, error) {
 
 	go func() {
 		wg.Wait()
+		close(workChan)
 		close(closeDoneCh)
 	}()
 
@@ -67,6 +74,12 @@ func NewWorkerPool(workerCount int) (*WorkerPool, error) {
 func (wp *WorkerPool) AddTask(task func()) error {
 	t := time.NewTicker(500 * time.Millisecond)
 	defer t.Stop()
+
+	select {
+	case <-wp.closeCh:
+		return fmt.Errorf("worker poll is shutdown, task not started")
+	default:
+	}
 
 	select {
 	case wp.workChan <- task:
