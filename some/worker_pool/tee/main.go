@@ -34,6 +34,39 @@ func TeeBlocked[T any](inputCh <-chan T, num int) []<-chan T {
 	return outputChFormat
 }
 
+// default lol :)
+func TeeNonBlocked[T any](inputCh <-chan T, num int) []<-chan T {
+	outputCh := make([]chan T, num)
+	for i := range num {
+		outputCh[i] = make(chan T)
+	}
+
+	go func() {
+		// Bocked operation, because if some goroutine non read channel, all goroutine stop,
+		// where channel is read
+		// Бликорующая операция(гарантия доставки), если одна из горутин не прочитает значание,
+		// другие будут остановлены
+		for data := range inputCh {
+			for _, ch := range outputCh {
+				select {
+				case ch <- data:
+				default:
+				}
+			}
+		}
+
+		for _, ch := range outputCh {
+			close(ch)
+		}
+	}()
+
+	outputChFormat := make([]<-chan T, num)
+	for i := range num {
+		outputChFormat[i] = outputCh[i]
+	}
+	return outputChFormat
+}
+
 func TeeStream[T any](inputCh <-chan T, num int) []<-chan T {
 	outputCh := make([]chan T, num)
 	for i := range num {
