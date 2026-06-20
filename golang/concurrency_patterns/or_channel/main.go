@@ -5,6 +5,8 @@ import (
 	"time"
 )
 
+// first goroutine done (but sub func(recursion)
+// goroutine leak (deadlock) (write in non-read channel))
 func or[T any](channels ...<-chan T) <-chan T {
 	switch len(channels) {
 	case 0:
@@ -28,6 +30,30 @@ func or[T any](channels ...<-chan T) <-chan T {
 	return out
 }
 
+// Signal helps runs without blocked goroutine, but if some time tick long time
+// Помогет частично убрать deadlock, но если time или сигналы будут долго обрабатываться
+// таже булет утечка
+func orSignal[T any](channels ...<-chan T) <-chan T {
+	switch len(channels) {
+	case 0:
+		return nil
+	case 1:
+		return channels[0]
+	}
+	doneCh := make(chan T)
+
+	go func() {
+		defer close(doneCh)
+		select {
+		case <-channels[0]:
+		case <-channels[1]:
+		case <-orSignal(channels[2:]...):
+		}
+	}()
+
+	return doneCh
+}
+
 func main() {
 	// 3 goroutine start (with main g=4)
 	<-or(
@@ -39,9 +65,7 @@ func main() {
 		time.After(590*time.Millisecond),
 		time.After(600*time.Millisecond),
 	)
-	// first goroutine done (but sub func(recursion)
-	// goroutine leak (deadlock) (write in non-read channel))
 	time.Sleep(1 * time.Second)
 
-	select {} // can see all deadlock(leek 2 goroutine)
+	// select {} // for see all deadlock(leek 2 goroutine)
 }
