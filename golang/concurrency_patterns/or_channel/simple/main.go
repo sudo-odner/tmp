@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"runtime"
 	"time"
 )
 
@@ -56,7 +57,9 @@ func orSignal[T any](channels ...<-chan T) <-chan T {
 
 func main() {
 	// 3 goroutine start (with main g=4)
-	<-or(
+	fmt.Println("num g:", runtime.NumGoroutine())
+	start := time.Now()
+	<-orSignal(
 		time.After(200*time.Millisecond),
 		time.After(230*time.Millisecond),
 		time.After(260*time.Millisecond),
@@ -65,7 +68,9 @@ func main() {
 		time.After(590*time.Millisecond),
 		time.After(600*time.Millisecond),
 	)
-	time.Sleep(1 * time.Second)
-
+	fmt.Printf("Called after: %s\n", time.Since(start))
+	fmt.Println("num g:", runtime.NumGoroutine())
+	time.Sleep(200 * time.Millisecond)
+	fmt.Println("num g:", runtime.NumGoroutine())
 	// select {} // for see all deadlock(leek 2 goroutine)
 }
