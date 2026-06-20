@@ -35,8 +35,7 @@ func orSignal[T any](done <-chan struct{}, channels ...<-chan T) <-chan T {
 		defer close(out)
 		select {
 		case <-channels[0]:
-		case <-channels[2]:
-		case <-orSignal(done, channels[2:]...):
+		case <-orSignal(done, channels[1:]...):
 		case <-done:
 		}
 	}()

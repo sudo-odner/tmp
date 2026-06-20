@@ -22,8 +22,7 @@ func or[T any](channels ...<-chan T) <-chan T {
 		var data T
 		select {
 		case data = <-channels[0]:
-		case data = <-channels[1]:
-		case data = <-or(channels[2:]...):
+		case data = <-or(channels[1:]...):
 		}
 		fmt.Println(data)
 		out <- data
@@ -47,8 +46,7 @@ func orSignal[T any](channels ...<-chan T) <-chan T {
 		defer close(doneCh)
 		select {
 		case <-channels[0]:
-		case <-channels[1]:
-		case <-orSignal(channels[2:]...):
+		case <-orSignal(channels[1:]...):
 		}
 	}()
 
