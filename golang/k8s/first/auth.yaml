@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth-deployment
+spec:
+  replicas: 2 # Запускаем 2 реплики
+  selector:
+    matchLabels:
+      app: auth-srv # Контроллер будет следить и управлять Pod только с этими метками
+  template:
+    metadata:
+      labels:
+        app: auth-srv # Метка вшивается в создоваемый Под
+    spec:
+      containers:
+        - name: auth-app
+          image: nginx:alpine # Иметирую сервер веб-сервером Nginx
+          ports:
+            - containerPort: 80 # Порт, который слушает внутри контейнера
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth-service
+spec:
+  type: ClusterIP # Внутреннее DNS-имя кластера. Позволяет обращаться как http://auth-service
+  selector:
+    app: auth-srv # Перенаправляет трафик на Pods с меткой auth-srv
+  ports:
+    - port: 80 # Порт самого Сервиса, в который бьют другие компоненты
+      targetPort: 80 # Порт внутри Контейнера, куда Сервис перенаправит этот трафик
+

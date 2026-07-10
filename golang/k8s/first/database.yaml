@@ -1,0 +1,50 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-headless
+spec:
+  clusterIP: None
+  selector:
+    app: postgres-db # Ищет и связывает Pods с меткой
+  ports:
+    - port: 5432 # На каком проту будут доступны Pods внутри кластера
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+spec:
+  serviceName: "postgres-headless"
+  replicas: 1 # Колличество реплик
+  selector:
+    matchLabels:
+      app: postgres-db # Контроллер будет работать только с Pods с этой меткой
+  template:
+    metadata:
+      labels:
+        app: postgres-db # Добавляет к поду метку
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:15-alpine # Образ Postgres
+          env:
+            - name: POSTGRES_PASSWORD
+              value: "master_key"
+          resources: # Ограничение Pod. Чтобы не съел все ресурсы Node
+            limits:
+              cpu: "200m" # 200 миллиядер (20% от мощности 1 ядра процессора)
+              memory: "256Mi" # 256 мегабайт оперативки
+          volumeMounts:
+            - name: db-data # Имя виртуального диска
+              mountPath: /var/lib/postgresql/data # Путь ВНУТРИ контейнера, куда Postgres пишет файлы БД
+
+  # Шаблон для автоматического создания независимых дисков под каждый Под
+  volumeClaimTemplates:
+    - metadata:
+        name: db-data
+      spec:
+        accessModes: ["ReadWriteOnce"] # Диск монтируется на чтение/запись только к одной Ноде одновременно
+        resources:
+          requests:
+            storage: 1Gi # Размер постоянного диска, который K8s выделит для этой базы
+
