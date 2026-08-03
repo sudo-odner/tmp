@@ -110,3 +110,36 @@ limit 3;
 -- В первую очередь это антипаттерн clean arcitecture слой BD одновременно отвечает за хранение и 
 -- ходение в сеть + во время выоплненние внешних запросов у нас держится соединение и другие 
 -- транзакции могут не пройти про ctx
+
+----------------------------------------------------------------------------------------------------
+-- Практика: 1.4
+-- Нам нужно найти пассажиров (passenger_id, passenger_name), у которых:
+-- * Общее количество билетов в tickets строго больше 4 (COUNT(DISTINCT t.ticket_no) > 4 или COUNT(t.ticket_no) > 4).
+-- * Средняя стоимость билета / перелета (стоимость берем либо из bookings.total_amount, либо из поля стоимости в segments, если оно там есть — проверь структуру segments или bookings) превышает 50 000 рублей.
+-- Связи таблиц:
+-- tickets.book_ref = bookings.book_ref
+-- tickets.ticket_no = segments.ticket_no
+--
+-- Выведи: passenger_id, passenger_name, total_tickets, avg_price (округли через ROUND(..., 2)).
+-- Сортировка по avg_price DESC.
+
+select
+    t.passenger_id as passenger_id,
+    t.passenger_name as passenger_name,
+    count(distinct t.ticket_no) as ticket_count,
+    round(avg(s.price), 2) as avg_price
+from tickets t
+left join segments s on s.ticket_no = t.ticket_no
+group by t.passenger_id, t.passenger_name
+having count(distinct t.ticket_no) > 4 and avg(s.price) > 50000
+order by avg_price desc;
+
+-- Вопрос 1.4 (Теория / B-Tree Индексы)
+-- [ ] Почему обычный B-Tree индекс `CREATE INDEX idx_tickets_name ON tickets(passenger_name);`
+-- совершенно не поможет для запроса:
+--
+-- SELECT * FROM tickets WHERE passenger_name LIKE '%IVANOV%';
+--
+-- Ответ: Так как в B-Tree данные отсартированы, если мы будем искать с права `some%` мы быстро сможем
+-- найти начало и вывести резултат. В случаях с `%some` или `%some%` мы не сможем сразу найти начало.
+-- Для это B-Tree придется пройтись по всему дереву, что почти также или даже хуже чем Seq Scan. 
