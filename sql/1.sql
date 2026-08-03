@@ -143,3 +143,48 @@ order by avg_price desc;
 -- Ответ: Так как в B-Tree данные отсартированы, если мы будем искать с права `some%` мы быстро сможем
 -- найти начало и вывести резултат. В случаях с `%some` или `%some%` мы не сможем сразу найти начало.
 -- Для это B-Tree придется пройтись по всему дереву, что почти также или даже хуже чем Seq Scan. 
+
+----------------------------------------------------------------------------------------------------
+-- Практика: 1.5 (Поиск по строкам & HAVING)
+-- Сделай запрос к tickets для поиска пассажиров по имени:
+-- * Найди всех пассажиров, у которых passenger_name содержит слово 'SERGEI' (например, SERGEI PETROV
+--   или PETROV SERGEI). Используй LIKE 'SERGEI %' или LIKE '% SERGEI' 
+--   (или универсальный LIKE '%SERGEI%').
+-- * Выведи passenger_id, passenger_name и количество их билетов (tickets_count).
+-- * Оставь только тех пассажиров, у которых билетов строго больше 1 (HAVING > 1).
+-- * Отсортируй по tickets_count DESC.
+
+select * from tickets;
+
+select
+    passenger_id,
+    passenger_name,
+    count(distinct ticket_no) as tickers_count
+from tickets
+where passenger_name like '%SERGEI%'
+group by passenger_id, passenger_name
+having count(distinct ticket_no) > 1
+order by tickers_count desc;
+
+-- Вопрос 1.5 (Теория / Подзапросы vs JOIN)
+-- Представь, что нам нужно получить список всех билетов, по которым перелет был из Москвы.
+-- Мы можем написать это двумя способами:
+--    Вариант А (JOIN):
+    SELECT DISTINCT t.ticket_no 
+    FROM tickets t
+    JOIN segments s ON s.ticket_no = t.ticket_no
+    WHERE s.departure_city = 'Moscow';
+
+--    Вариант Б (Подзапрос / IN):
+    SELECT t.ticket_no 
+    FROM tickets t
+    WHERE t.ticket_no IN (
+        SELECT s.ticket_no 
+        FROM segments s 
+        WHERE s.departure_city = 'Moscow'
+    );
+
+-- Вопросы:
+-- [-] Есть ли разница в производительности между эти двумя запросами в современном Postgres?
+-- Ответ: Нет разницы не будет, под капотом Postgres объеденит в Semi-Join
+--
