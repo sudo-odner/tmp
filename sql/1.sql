@@ -187,4 +187,43 @@ order by tickers_count desc;
 -- Вопросы:
 -- [-] Есть ли разница в производительности между эти двумя запросами в современном Postgres?
 -- Ответ: Нет разницы не будет, под капотом Postgres объеденит в Semi-Join
---
+
+----------------------------------------------------------------------------------------------------
+-- Практика: 1.6.1
+-- Для каждого билета из таблицы segments пронумеруй его перелеты по порядку.
+-- * Выведи: ticket_no, flight_id, price, а также segment_number (через ROW_NUMBER() OVER (PARTITION BY ticket_no ORDER BY flight_id)).
+
+select
+    s.ticket_no,
+    s.flight_id,
+    s.price,
+    row_number() over (partition by ticket_no order by flight_id)
+from segments s limit 100;
+
+
+-- Практика: 1.6.2 
+-- Найди самый дорогой перелет/сегмент для каждого пассажира из tickets + segments.
+-- * Через CTE или подзапрос посчитай DENSE_RANK() OVER (PARTITION BY t.passenger_id ORDER BY s.price DESC) AS price_rank.
+-- * Отфильтруй и оставь только записи с price_rank = 1.
+-- * Выведи: passenger_id, passenger_name, ticket_no, price.
+with ranced_price as (
+    select
+        t.passenger_id as passenger_id,
+        t.passenger_name as passenger_name,
+        t.ticket_no as ticket_no,
+        s.price as price,
+        dense_rank() over (partition by t.passenger_id order by s.price desc) as price_rank
+    from tickets t
+    left join segments s on t.ticket_no = s.ticket_no
+)
+select passenger_id, passenger_name, ticket_no, price
+from ranced_price
+where price_rank = 1;
+
+-- Вопрос: 1.6 
+-- [+/-] Выполнится ли запрос:
+SELECT price, ROW_NUMBER() OVER (ORDER BY price DESC) as rn 
+FROM segments 
+WHERE ROW_NUMBER() OVER (ORDER BY price DESC) <= 5;
+-- Ответ: Нет, WHERE как и HAVING отрабатывают до оконных функция. Postgres отвыст ошибку
+-- windows functions are not allowed in WHERE
