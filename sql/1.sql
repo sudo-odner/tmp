@@ -227,3 +227,77 @@ FROM segments
 WHERE ROW_NUMBER() OVER (ORDER BY price DESC) <= 5;
 -- Ответ: Нет, WHERE как и HAVING отрабатывают до оконных функция. Postgres отвыст ошибку
 -- windows functions are not allowed in WHERE
+
+----------------------------------------------------------------------------------------------------
+-- Практика: 1.7.1
+-- Напиши запрос, который найдет перелеты, цена которых выше среднего чека конкретного пассажира:
+-- * Создай CTE passenger_stats, которая считат средний чек для каждого пассажира:
+--   passenger_id, ROUND(AVG(s.price), 2) AS avg_passenger_price.
+-- * В основном запросе соедини tickets, segments и твоё CTE.
+-- * Отфильтруй только те сегменты, где s.price > avg_passenger_price.
+-- * Выведи: passenger_name, ticket_no, flight_id, price, avg_passenger_price.
+-- * Отсортируй по разнице (s.price - avg_passenger_price) DESC.
+--
+
+with passenger_stats as (
+    select
+        t.passenger_id as passenger_id,
+        round(avg(s.price), 2) as avg_passenger_price
+    from tickets t
+    left join segments s on t.ticket_no = s.ticket_no
+    group by t.passenger_id
+)
+select
+    t.passenger_name as passenger_name,
+    t.ticket_no as ticket_no,
+    s.flight_id as flight_id,
+    s.price as price,
+    ps.avg_passenger_price as avg_passenger_price
+from tickets t
+left join segments s on t.ticket_no = s.ticket_no
+join passenger_stats ps on t.passenger_id = ps.passenger_id
+where s.price > ps.avg_passenger_price
+order by (s.price - ps.avg_passenger_price);
+
+-- Практика: 1.7.2
+-- Посчитай динамику цены между перелетами по одному и тому же билету:
+-- * Выведи: ticket_no, flight_id, price.
+-- * Добавь prev_price — стоимость предыдущего перелета по этому же билету (LAG(price) OVER (PARTITION BY ticket_no ORDER BY flight_id)).
+-- * Добавь price_diff — разницу (price - prev_price).
+select
+    ticket_no,
+    flight_id,
+    price,
+    lag(price, 1, 0) over (partition by ticket_no order by flight_id) as prev_price,
+    (price - lag(price, 1, 0) over (partition by ticket_no order by flight_id)) as price_diff
+from segments
+order by ticket_no, flight_id;
+
+-- Вопрос: 1.7
+-- Посмотри на этот запрос с зависимым подзапросом в SELECT:
+SELECT 
+    t.ticket_no,
+    t.passenger_name,
+    (
+        SELECT COUNT(*) 
+        FROM segments s 
+        WHERE s.ticket_no = t.ticket_no
+    ) AS segments_count
+FROM tickets t;
+
+-- [+] Как Postgres будет выполнять этот подзапрос для каждой строки таблицы tickets?
+-- Ответ: Поиде Postgres может сделать Semi-Join, однако в нутри есть агрегатная функция. Как я помню
+-- при вычислениях или агрегатных функций нелзя делать Semi-Join. Если подумать то в данном запросе
+-- у нас просиходи что мы проходимся по каждому ticket_no и смотрим сколько упоминаний было в segments.
+-- Так как мы не можем гарантировать что в s есть/нет повторений у нас агрегатная функция будет слопывать
+-- если при Semi-Join это произойдет то внешня функция может слопнутся когда этого нам не нужно.
+-- Хотя мы знаем что ticket_no это PK которй уникальный он может и не быть таковым.
+
+-- [+/-] Как переписать его через LEFT JOIN + GROUP BY, чтобы он работал значительно быстрее на больших данных?
+select 
+    t.ticket_no,
+    t.passenger_name,
+    count(s.flight_id)
+from tickets t
+left join segments s on t.ticket_no = s.ticket_no
+group by t.ticket_no, t.passenger_name;
