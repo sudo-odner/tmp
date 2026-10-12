@@ -177,13 +177,28 @@ func (a *App) awaitResponse(targetReqID string) (*protocol.Response, error) {
 
 		var fullPayload []byte
 		if chunk.Total > 1 {
+			a.log.Debug("received chunk",
+				slog.String("req_id", chunk.MessageID),
+				slog.Int("part", chunk.Part),
+				slog.Int("total", chunk.Total),
+				slog.Int("size", len(chunk.Data)),
+			)
 			sessionKey := fmt.Sprintf("%s#%s", from.String(), chunk.MessageID)
 			payload, complete := a.assembler.AddChunk(sessionKey, chunk.Part, chunk.Total, chunk.Data)
 			if !complete {
 				continue
 			}
+			a.log.Debug("all chunks assembled",
+				slog.String("req_id", chunk.MessageID),
+				slog.Int("total_chunks", chunk.Total),
+				slog.Int("total_bytes", len(payload)),
+			)
 			fullPayload = payload
 		} else {
+			a.log.Debug("received single chunk response",
+				slog.String("req_id", chunk.MessageID),
+				slog.Int("size", len(chunk.Data)),
+			)
 			fullPayload = chunk.Data
 		}
 

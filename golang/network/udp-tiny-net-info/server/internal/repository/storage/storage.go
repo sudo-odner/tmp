@@ -24,15 +24,18 @@ func New() *Storage {
 }
 
 func (s *Storage) ByKey(key string) (string, bool) {
-	val, ok := s.data[key]
+	if val, ok := s.data[key]; ok {
+		return val, true
+	}
+	val, ok := s.data[strings.ToUpper(key)]
 	return val, ok
 }
 
 func (s *Storage) Search(substring string) [][2]string {
 	list := make([][2]string, 0, len(s.data))
+	subLower := strings.ToLower(substring)
 	for key, value := range s.data {
-		findSub := strings.Index(strings.ToLower(value), strings.ToUpper(substring))
-		if findSub != -1 {
+		if strings.Contains(strings.ToLower(value), subLower) || strings.Contains(strings.ToLower(key), subLower) {
 			list = append(list, [2]string{key, value})
 		}
 	}

@@ -38,6 +38,7 @@ type App struct {
 func New(cfg *config.Config, log *slog.Logger) *App {
 	return &App{
 		cfg:      cfg,
+		log:      log,
 		repo:     storage.New(),
 		cache:    cache.New(cfg.Cache.Capacity),
 		assembly: assembly.NewAssembler(cfg.Server.Timeout),
@@ -58,6 +59,7 @@ func (a *App) Run(ctx context.Context) error {
 	}
 	a.conn = conn
 	defer a.conn.Close()
+	defer a.assembly.Stop()
 
 	a.log.Info("server listening", slog.String("addr", addr.String()))
 	go func() {
@@ -77,7 +79,7 @@ func (a *App) Run(ctx context.Context) error {
 		}
 
 		rawPacket := make([]byte, n)
-		copy(rawPacket, buf[n:])
+		copy(rawPacket, buf[:n])
 		a.handlePacket(clientAddr, rawPacket)
 	}
 }
@@ -85,7 +87,7 @@ func (a *App) Run(ctx context.Context) error {
 func (a *App) handlePacket(clientAddr *net.UDPAddr, rawPacket []byte) {
 	chunk, err := protocol.UnmarshalChunk(rawPacket)
 	if err != nil {
-		slog.Warn("malformed packet", slog.String("from", clientAddr.String()), slog.Any("err", err))
+		a.log.Warn("malformed packet", slog.String("from", clientAddr.String()), slog.Any("err", err))
 		return
 	}
 
@@ -103,7 +105,7 @@ func (a *App) handlePacket(clientAddr *net.UDPAddr, rawPacket []byte) {
 	}
 
 	if cachedResp, ok := a.cache.Get(sessionKey); ok {
-		slog.Info("duplicate request served from cache", slog.String("req_id", chunk.MessageID))
+		a.log.Info("duplicate request served from cache", slog.String("req_id", chunk.MessageID))
 		a.sendResponse(clientAddr, chunk.MessageID, []byte(cachedResp))
 		return
 	}
@@ -115,7 +117,7 @@ func (a *App) handlePacket(clientAddr *net.UDPAddr, rawPacket []byte) {
 
 	// miss datagram
 	if a.cfg.LossRate > 0 && rand.Float64() < a.cfg.LossRate {
-		slog.Warn("simulate response drop", slog.String("req_id", chunk.MessageID), slog.Float64("loss_rate", a.cfg.LossRate))
+		a.log.Warn("simulate response drop", slog.String("req_id", chunk.MessageID), slog.Float64("loss_rate", a.cfg.LossRate))
 		return
 	}
 
@@ -165,9 +167,16 @@ func (a *App) executeCommand(payload []byte) *protocol.Response {
 
 func (a *App) sendResponse(clientAddr *net.UDPAddr, msgID string, payload []byte) {
 	chunks := protocol.SplitIntoChunks(msgID, payload, a.cfg.MaxChunkSize)
+	a.log.Debug("sending response",
+		slog.String("client", clientAddr.String()),
+		slog.String("msg_id", msgID),
+		slog.Int("payload_bytes", len(payload)),
+		slog.Int("chunk_size", a.cfg.MaxChunkSize),
+		slog.Int("total_chunks", len(chunks)),
+	)
 	for _, ch := range chunks {
 		if _, err := a.conn.WriteToUDP(ch.Marshal(), clientAddr); err != nil {
-			slog.Error("failed to write datagram", slog.String("client", clientAddr.String()), slog.Any("err", err))
+			a.log.Error("failed to write datagram", slog.String("client", clientAddr.String()), slog.Any("err", err))
 		}
 	}
 }

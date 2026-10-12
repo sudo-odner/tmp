@@ -71,7 +71,7 @@ func MustLoad() *Config {
 	}
 	cfg.AssemblerTTL = assemblerTTL
 
-	maxChunkSize, err := getEnvInt("CLIENT_MAX_CHUNK_SIZE", 64)
+	maxChunkSize, err := getEnvInt("CLIENT_MAX_CHUNK_SIZE", 10)
 	if err != nil {
 		log.Fatalf("ERROR: failed to parse config: %v", err)
 	}

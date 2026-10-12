@@ -59,22 +59,22 @@ func MustLoad() *Config {
 	var cfg Config
 	var err error
 
-	maxChunkSize, err := getEnvInt("MAX_CHUNK_SIZE", 64)
+	maxChunkSize, err := getEnvInt("MAX_CHUNK_SIZE", 10)
 	if err != nil {
-		log.Fatal("ERROR: faled parce config: %w", err)
+		log.Fatalf("ERROR: failed to parse config: %v", err)
 	}
 	cfg.MaxChunkSize = maxChunkSize
 
 	lossRate, err := getEnvInt("LOSS_RATE", 30)
 	if err != nil {
-		log.Fatal("ERROR: faled parce config: %w", err)
+		log.Fatalf("ERROR: failed to parse config: %v", err)
 	}
 	cfg.LossRate = float64(lossRate) / 100.0
 	// Get server setting
 	serverAddress := getEnv("SERVER_ADDRESS", "0.0.0.0:5008")
 	serverTimeout, err := getEnvDuration("SERVER_TIMEOUT", 2*time.Second)
 	if err != nil {
-		log.Fatal("ERROR: falied parce config: %w", err)
+		log.Fatalf("ERROR: failed to parse config: %v", err)
 	}
 	cfg.Server = Server{
 		Address: serverAddress,
@@ -82,9 +82,9 @@ func MustLoad() *Config {
 	}
 
 	// Get cache setting
-	cacheCapacity, err := getEnvInt("CACHE_CAPACYTI", 100)
+	cacheCapacity, err := getEnvInt("CACHE_CAPACITY", 100)
 	if err != nil {
-		log.Fatal("ERROR: faled parce config: %w", err)
+		log.Fatalf("ERROR: failed to parse config: %v", err)
 	}
 	cfg.Cache = Cache{
 		Capacity: cacheCapacity,
