@@ -13,6 +13,7 @@ type Config struct {
 	Timeout      time.Duration
 	MaxRetries   int
 	AssemblerTTL time.Duration
+	MaxChunkSize int
 }
 
 func getEnv(key, defaultVal string) string {
@@ -50,25 +51,31 @@ func MustLoad() *Config {
 	var cfg Config
 	var err error
 
-	cfg.ServerAddr = getEnv("CLIENT_SERVER_ADDR", "0.0.0.0:5008")
+	cfg.ServerAddr = getEnv("CLIENT_SERVER_ADDR", "127.0.0.1:5008")
 
 	maxRetries, err := getEnvInt("CLIENT_RETRIES", 3)
 	if err != nil {
-		log.Fatal("ERROR: faled parce config: %w", err)
+		log.Fatalf("ERROR: failed to parse config: %v", err)
 	}
 	cfg.MaxRetries = maxRetries
 
 	timeout, err := getEnvDuration("CLIENT_TIMEOUT", 2*time.Second)
 	if err != nil {
-		log.Fatal("ERROR: faled parce config: %w", err)
+		log.Fatalf("ERROR: failed to parse config: %v", err)
 	}
 	cfg.Timeout = timeout
 
 	assemblerTTL, err := getEnvDuration("CLIENT_ASSEMBLER_TTL", 6*time.Second)
 	if err != nil {
-		log.Fatal("ERROR: faled parce config: %w", err)
+		log.Fatalf("ERROR: failed to parse config: %v", err)
 	}
 	cfg.AssemblerTTL = assemblerTTL
+
+	maxChunkSize, err := getEnvInt("CLIENT_MAX_CHUNK_SIZE", 64)
+	if err != nil {
+		log.Fatalf("ERROR: failed to parse config: %v", err)
+	}
+	cfg.MaxChunkSize = maxChunkSize
 
 	return &cfg
 }
