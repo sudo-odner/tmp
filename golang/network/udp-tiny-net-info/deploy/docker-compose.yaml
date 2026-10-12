@@ -1,0 +1,31 @@
+services:
+  server:
+    build:
+      context: ../server
+      dockerfile: Dockerfile
+    container_name: udp-netinfo-server
+    ports:
+      - "5008:5008/udp"
+    environment:
+      - SERVER_ADDRESS=0.0.0.0:5008
+      - SERVER_TIMEOUT=2s
+      - MAX_CHUNK_SIZE=64
+      - LOSS_RATE=0
+      - CACHE_CAPACITY=100
+    restart: unless-stopped
+
+  client:
+    build:
+      context: ../client
+      dockerfile: Dockerfile
+    container_name: udp-netinfo-client
+    stdin_open: true
+    tty: true
+    depends_on:
+      - server
+    environment:
+      - CLIENT_SERVER_ADDR=server:5008
+      - CLIENT_RETRIES=3
+      - CLIENT_TIMEOUT=2s
+      - CLIENT_ASSEMBLER_TTL=6s
+      - CLIENT_MAX_CHUNK_SIZE=64
