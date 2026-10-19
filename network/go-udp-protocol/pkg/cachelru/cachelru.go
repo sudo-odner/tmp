@@ -4,7 +4,7 @@ import "sync"
 
 type Node struct {
 	key   string
-	value string
+	value []byte
 	prev  *Node
 	next  *Node
 }
@@ -43,7 +43,7 @@ func (c *CacheLRU) pushHead(n *Node) {
 	c.head.next = n
 }
 
-func (c *CacheLRU) Put(key string, value string) {
+func (c *CacheLRU) Put(key string, value []byte) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -65,13 +65,13 @@ func (c *CacheLRU) Put(key string, value string) {
 	c.items[key] = newNode
 }
 
-func (c *CacheLRU) Get(key string, value string) (string, bool) {
+func (c *CacheLRU) Get(key string, value string) ([]byte, bool) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
 	node, exists := c.items[key]
 	if !exists {
-		return "", false
+		return nil, false
 	}
 
 	c.remove(node)
