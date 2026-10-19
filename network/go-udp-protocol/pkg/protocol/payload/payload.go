@@ -1,9 +1,8 @@
 package payload
 
 import (
+	"bytes"
 	"errors"
-	"fmt"
-	"strings"
 )
 
 var (
@@ -52,18 +51,23 @@ type Request struct {
 	Args    []string
 }
 
-func (r *Request) Marshal() string {
-	all := append([]string{string(r.Command)}, r.Args...)
-	return strings.Join(all, "|")
+func (r *Request) Marshal() []byte {
+	var buf bytes.Buffer
+	buf.WriteString(string(r.Command))
+	buf.WriteByte('|')
+	for _, arg := range r.Args {
+		buf.WriteString(arg)
+	}
+	return buf.Bytes()
 }
 
-func UnmarshalRequset(raw string) (*Request, error) {
-	parts := strings.Split(raw, "|")
+func UnmarshalRequset(raw []byte) (*Request, error) {
+	parts := bytes.Split(raw, []byte{'|'})
 	if len(parts) == 0 || len(parts[0]) == 0 {
 		return nil, ErrInvalidPayload
 	}
 
-	cmd := Commands(parts[0])
+	cmd := Commands(string(parts[0]))
 	if cmd.IsValid() {
 		return nil, ErrUnknownCommands
 	}
@@ -86,22 +90,26 @@ type Response struct {
 	Body   string // OK - result, ERROR - status code
 }
 
-func (r *Response) Marshal() string {
-	return fmt.Sprintf("%s|%s", r.Status, r.Body)
+func (r *Response) Marshal() []byte {
+	var buf bytes.Buffer
+	buf.WriteString(string(r.Status))
+	buf.WriteByte('|')
+	buf.WriteString(r.Body)
+	return buf.Bytes()
 }
 
-func UnmarshalResponse(raw string) (*Response, error) {
-	parts := strings.Split(raw, "|")
+func UnmarshalResponse(raw []byte) (*Response, error) {
+	parts := bytes.Split(raw, []byte{'|'})
 	if len(parts) == 2 {
 		return nil, ErrInvalidPayload
 	}
 
-	status := Status(parts[0])
+	status := Status(string(parts[0]))
 	if status.IsValid() {
 		return nil, ErrUnknownStatus
 	}
 	return &Response{
 		Status: status,
-		Body:   parts[1],
+		Body:   string(parts[1]),
 	}, nil
 }
