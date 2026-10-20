@@ -50,8 +50,8 @@ func Unmarshal(raw []byte) (*Packet, error) {
 	parts := bytes.SplitN(raw, []byte{'|'}, 4)
 	if len(parts) == 4 {
 		part, errPart := strconv.Atoi(string(parts[1]))
-		total, errTotal := strconv.Atoi(string(parts[1]))
-		if errPart != nil && errTotal != nil && total > 0 && part > 0 {
+		total, errTotal := strconv.Atoi(string(parts[2]))
+		if errPart == nil && errTotal == nil && total > 0 && part > 0 && part <= total {
 			return &Packet{
 				MessageID: string(parts[0]),
 				Part:      part,
@@ -84,24 +84,18 @@ func SplitDataOnPackage(msgID string, payload []byte, size int) []Packet {
 		}}
 	}
 
-	packagesCount := (len(payload) / size) + 1
-	if packagesCount == 1 {
-		return []Packet{{
-			MessageID: msgID,
-			Part:      1,
-			Total:     1,
-			Payload:   payload,
-		}}
-	}
+	packagesCount := (len(payload) + size - 1) / size
+	packages := make([]Packet, 0, packagesCount)
 
-	packages := make([]Packet, len(payload))
+	partNum := 1
 	for i := 0; i < len(payload); i += size {
 		packages = append(packages, Packet{
 			MessageID: msgID,
-			Part:      len(packages) + 1,
+			Part:      partNum,
 			Total:     packagesCount,
 			Payload:   payload[i:min(i+size, len(payload))],
 		})
+		partNum++
 	}
 	return packages
 }
@@ -124,9 +118,9 @@ type PacketAssembler struct {
 
 func NewPackageAssember(ttl time.Duration, packageSize int) *PacketAssembler {
 	pa := &PacketAssembler{
-		mu:       sync.Mutex{},
 		ttl:      ttl,
 		sessions: make(map[string]*PacketBuf),
+		done:     make(chan struct{}),
 		pool: sync.Pool{
 			New: func() any {
 				buf := make([]byte, packageSize)
@@ -136,31 +130,30 @@ func NewPackageAssember(ttl time.Duration, packageSize int) *PacketAssembler {
 	}
 
 	go pa.backgroundCleaner()
-
 	return pa
 }
 
 func (pa *PacketAssembler) AddPacakge(msgID string, part, totalParts int, payload []byte) ([]byte, bool) {
-	if part <= 0 && totalParts <= 0 && part > totalParts {
+	if part <= 0 || totalParts <= 0 || part > totalParts {
 		return nil, false
 	}
 
 	pa.mu.Lock()
-	defer pa.mu.Unlock()
 	sess, exists := pa.sessions[msgID]
 	if !exists {
 		sess = &PacketBuf{
 			mu:           sync.Mutex{},
 			total:        totalParts,
 			recivedCount: 0,
-			parts:        make([][]byte, totalParts),
+			parts:        make([][]byte, totalParts+1),
 			updatedAt:    time.Now(),
 		}
 		pa.sessions[msgID] = sess
 	}
-	sess.mu.Lock()
-	defer sess.mu.Unlock()
+	pa.mu.Unlock()
 
+	sess.mu.Lock()
+	sess.updatedAt = time.Now()
 	if sess.parts[part] == nil {
 		ptr := pa.pool.Get().(*[]byte)
 		buf := *ptr
@@ -169,26 +162,29 @@ func (pa *PacketAssembler) AddPacakge(msgID string, part, totalParts int, payloa
 		sess.parts[part] = buf[:n]
 		sess.recivedCount++
 	}
+	sess.mu.Unlock()
 
 	if sess.recivedCount == sess.total {
+		pa.mu.Lock()
 		delete(pa.sessions, msgID)
+		pa.mu.Unlock()
 		return pa.concat(sess), true
 	}
 	return nil, false
 }
 
 func (pa *PacketAssembler) concat(sess *PacketBuf) []byte {
-	payloadLen := 0
+	lenPyaload := 0
 	for _, f := range sess.parts {
-		payloadLen += len(f)
+		lenPyaload += len(f)
 	}
-	payload := make([]byte, payloadLen)
+	payload := make([]byte, lenPyaload)
 	offset := 0
-	for i, f := range sess.parts {
-		if f != nil {
-			copy(payload[offset:], f)
-			offset += len(f)
-			bufPtr := &f
+	for i := 1; i < len(sess.parts); i++ {
+		if sess.parts[i] != nil {
+			copy(payload[offset:], sess.parts[i])
+			offset += len(sess.parts[i])
+			bufPtr := &sess.parts[i]
 			pa.pool.Put(bufPtr)
 			sess.parts[i] = nil
 		}

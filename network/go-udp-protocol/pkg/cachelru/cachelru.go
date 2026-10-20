@@ -65,7 +65,7 @@ func (c *CacheLRU) Put(key string, value []byte) {
 	c.items[key] = newNode
 }
 
-func (c *CacheLRU) Get(key string, value string) ([]byte, bool) {
+func (c *CacheLRU) Get(key string) ([]byte, bool) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 

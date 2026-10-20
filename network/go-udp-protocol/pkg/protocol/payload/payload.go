@@ -21,9 +21,9 @@ const (
 func (s Status) IsValid() bool {
 	switch s {
 	case StatusOK, StatusERROR:
-		return false
-	default:
 		return true
+	default:
+		return false
 	}
 }
 
@@ -40,9 +40,9 @@ const (
 func (c Commands) IsValid() bool {
 	switch c {
 	case CmdGET, CmdLIST, CmdSEARCH, CmdEXISTS, CmdCOUNT:
-		return false
-	default:
 		return true
+	default:
+		return false
 	}
 }
 
@@ -68,14 +68,14 @@ func UnmarshalRequset(raw []byte) (*Request, error) {
 	}
 
 	cmd := Commands(string(parts[0]))
-	if cmd.IsValid() {
+	if !cmd.IsValid() {
 		return nil, ErrUnknownCommands
 	}
 	var args []string
 	if len(parts) > 1 {
 		args = make([]string, len(parts)-1)
-		for i, p := range parts {
-			args[i] = string(p)
+		for i := 1; i < len(parts); i++ {
+			args[i-1] = string(parts[i])
 		}
 	}
 
@@ -100,12 +100,12 @@ func (r *Response) Marshal() []byte {
 
 func UnmarshalResponse(raw []byte) (*Response, error) {
 	parts := bytes.Split(raw, []byte{'|'})
-	if len(parts) == 2 {
+	if len(parts) != 2 {
 		return nil, ErrInvalidPayload
 	}
 
 	status := Status(string(parts[0]))
-	if status.IsValid() {
+	if !status.IsValid() {
 		return nil, ErrUnknownStatus
 	}
 	return &Response{
