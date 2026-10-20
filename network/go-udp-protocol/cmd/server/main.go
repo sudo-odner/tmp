@@ -25,13 +25,14 @@ type Config struct {
 	host           string
 	port           int
 	timeout        time.Duration
+	assembleTTL    time.Duration
 	lossRate       float64
 	maxPayloadSize int
 	cacheCapacity  int
 }
 
 func main() {
-	// Logger
+	// Loggerk
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
 		Level: slog.LevelDebug,
 	}))
@@ -41,6 +42,7 @@ func main() {
 	flag.StringVar(&cfg.host, "host", "127.0.0.1", "Айпи сервера (default: '127.0.0.1')")
 	flag.IntVar(&cfg.port, "port", 5003, "Порт сервера (defalut: 5008)")
 	flag.DurationVar(&cfg.timeout, "timeout", 2*time.Second, "Время ожидания (default: 2s)")
+	flag.DurationVar(&cfg.timeout, "assemble-ttl", 6*time.Second, "Время жизни пакетов на сборку пакетов (default: 6s)")
 	flag.Float64Var(&cfg.lossRate, "loss-rate", 0.3, "Процент потерь пакетов в коэффициенте от 0-1 (default: 0.3)")
 	flag.IntVar(&cfg.maxPayloadSize, "max-payload-size", 100, "Ограничение payload по byte на датаграмму (default: 100)")
 	flag.IntVar(&cfg.cacheCapacity, "cache-capacity", 100, "Ограничение LRU cache (default: 100)")
