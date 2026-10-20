@@ -22,8 +22,7 @@ import (
 )
 
 type Config struct {
-	host           string
-	port           int
+	addr           string
 	timeout        time.Duration
 	assembleTTL    time.Duration
 	lossRate       float64
@@ -39,10 +38,9 @@ func main() {
 
 	// Config
 	var cfg Config
-	flag.StringVar(&cfg.host, "host", "127.0.0.1", "Айпи сервера (default: '127.0.0.1')")
-	flag.IntVar(&cfg.port, "port", 5003, "Порт сервера (defalut: 5008)")
+	flag.StringVar(&cfg.addr, "addr", "127.0.0.1:5008", "Адресс сервера (default: '127.0.0.1:5008')")
 	flag.DurationVar(&cfg.timeout, "timeout", 2*time.Second, "Время ожидания (default: 2s)")
-	flag.DurationVar(&cfg.timeout, "assemble-ttl", 6*time.Second, "Время жизни пакетов на сборку пакетов (default: 6s)")
+	flag.DurationVar(&cfg.assembleTTL, "assemble-ttl", 6*time.Second, "Время жизни пакетов на сборку пакетов (default: 6s)")
 	flag.Float64Var(&cfg.lossRate, "loss-rate", 0.3, "Процент потерь пакетов в коэффициенте от 0-1 (default: 0.3)")
 	flag.IntVar(&cfg.maxPayloadSize, "max-payload-size", 100, "Ограничение payload по byte на датаграмму (default: 100)")
 	flag.IntVar(&cfg.cacheCapacity, "cache-capacity", 100, "Ограничение LRU cache (default: 100)")
@@ -54,9 +52,9 @@ func main() {
 	}
 
 	logger.Info("Start with config",
-		slog.String("host", cfg.host),
-		slog.Int("port", cfg.port),
+		slog.String("addr", cfg.addr),
 		slog.Duration("timeout", cfg.timeout),
+		slog.Duration("assemble-ttl", cfg.timeout),
 		slog.Float64("loss-rate", cfg.lossRate),
 		slog.Int("max-payload-size", cfg.maxPayloadSize),
 		slog.Int("cache-capacity", cfg.cacheCapacity),
@@ -89,20 +87,16 @@ func New(cfg *Config, log *slog.Logger) *App {
 		log:     log,
 		storage: storage.New(),
 
-		packetAssembler: protocol.NewPackageAssember(cfg.timeout, cfg.maxPayloadSize),
+		packetAssembler: protocol.NewPackageAssember(cfg.assembleTTL, cfg.maxPayloadSize),
 		cache:           cachelru.New(cfg.cacheCapacity),
 	}
 }
 
 func (a *App) Run(ctx context.Context) error {
-	ip := net.ParseIP(a.cfg.host)
-	if ip == nil {
-		a.log.Error("Incurrect IP-host format", "host", ip)
-	}
-	fmt.Print(ip, a.cfg.port)
-	addr := &net.UDPAddr{
-		IP:   ip,
-		Port: a.cfg.port,
+	addr, err := net.ResolveUDPAddr("udp", a.cfg.addr)
+	if err != nil {
+		a.log.Error("failed resolve udp", slog.Any("error", err))
+		return fmt.Errorf("failed resolve udp")
 	}
 
 	conn, err := net.ListenUDP("udp", addr)
@@ -110,6 +104,7 @@ func (a *App) Run(ctx context.Context) error {
 		a.log.Error("failed listed udp", slog.Any("error", err))
 		return fmt.Errorf("falied listed udp")
 	}
+
 	a.conn = conn
 	defer a.conn.Close()
 	defer a.packetAssembler.Stop()

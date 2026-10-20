@@ -112,7 +112,6 @@ type PacketAssembler struct {
 	mu       sync.Mutex
 	ttl      time.Duration
 	sessions map[string]*PacketBuf
-	pool     sync.Pool
 	done     chan struct{}
 }
 
@@ -121,12 +120,6 @@ func NewPackageAssember(ttl time.Duration, packageSize int) *PacketAssembler {
 		ttl:      ttl,
 		sessions: make(map[string]*PacketBuf),
 		done:     make(chan struct{}),
-		pool: sync.Pool{
-			New: func() any {
-				buf := make([]byte, packageSize)
-				return &buf
-			},
-		},
 	}
 
 	go pa.backgroundCleaner()
@@ -155,11 +148,10 @@ func (pa *PacketAssembler) AddPacakge(msgID string, part, totalParts int, payloa
 	sess.mu.Lock()
 	sess.updatedAt = time.Now()
 	if sess.parts[part] == nil {
-		ptr := pa.pool.Get().(*[]byte)
-		buf := *ptr
-		n := copy(buf, payload)
+		buf := make([]byte, len(payload))
+		copy(buf, payload)
 
-		sess.parts[part] = buf[:n]
+		sess.parts[part] = buf
 		sess.recivedCount++
 	}
 	sess.mu.Unlock()
@@ -180,13 +172,11 @@ func (pa *PacketAssembler) concat(sess *PacketBuf) []byte {
 	}
 	payload := make([]byte, lenPyaload)
 	offset := 0
+
 	for i := 1; i < len(sess.parts); i++ {
 		if sess.parts[i] != nil {
 			copy(payload[offset:], sess.parts[i])
 			offset += len(sess.parts[i])
-			bufPtr := &sess.parts[i]
-			pa.pool.Put(bufPtr)
-			sess.parts[i] = nil
 		}
 	}
 
@@ -205,12 +195,6 @@ func (pa *PacketAssembler) backgroundCleaner() {
 			for key, sess := range pa.sessions {
 				sess.mu.Lock()
 				if now.Sub(sess.updatedAt) > pa.ttl {
-					for _, p := range sess.parts {
-						if p != nil {
-							bufPtr := &p
-							pa.pool.Put(bufPtr)
-						}
-					}
 					delete(pa.sessions, key)
 				}
 				sess.mu.Unlock()

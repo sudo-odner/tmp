@@ -99,7 +99,7 @@ func (r *Response) Marshal() []byte {
 }
 
 func UnmarshalResponse(raw []byte) (*Response, error) {
-	parts := bytes.Split(raw, []byte{'|'})
+	parts := bytes.SplitN(raw, []byte{'|'}, 2)
 	if len(parts) != 2 {
 		return nil, ErrInvalidPayload
 	}
